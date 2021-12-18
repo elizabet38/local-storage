@@ -152,6 +152,69 @@ SocketStatePtr accept_connection(
 
 }   // namespace
 
+class HashTable {
+public:
+    std::unordered_map<std::string, uint64_t> table;
+    std::string log_file = "log.log";
+    std::string table_name = "table.tab";
+    std::ofstream log_out;
+    std::num = 0
+    std::MAX_LOG_SIZE = 65536
+
+
+    void restore() {
+        std::ifstream table_in(table_name);
+    	std::ifstream log_in(log_file);
+
+   	std::string key;
+    	std::uint64_t value;
+    	while (table_in >> key >> value) {
+      		table[key] = value;
+    	}
+
+    	while (log_in >> key >> value) {
+      		table[key] = value;
+    	}
+
+    	table_in.close();
+    	log_in.close();
+    }
+
+    std::pair<bool, uint64_t> find(const std::string &key) {
+        return std::make_pair(table.find(key) != table.end(), table[key]);
+    }
+
+    void insert(const std::string &key, const uint64_t &value) {
+        log_out << key << " " << value << "\n";
+	    log_out.flush();
+        table[key] = value;
+    }
+
+    void table_update() {
+        std::ofstream table_out;
+       	table_out.open(table_name, std::ofstream::out | std::ofstream::trunc);
+
+        for (auto& it: table) {
+            table_out << it.first << ' ' << it.second << '\n';
+        }
+        table_out.close();
+    }
+
+    HashTable() {
+     	restore();
+	    table_update();
+	    num++
+	    if (num == MAX_LOG_SIZE) {
+	        log_out.fopen(log_file, "w");
+	        num = 0
+	    }
+	    else {
+	        log_out.open(log_file, std::ofstream::trunc);
+        }
+    }
+
+};
+
 ////////////////////////////////////////////////////////////////////////////////
 
 int main(int argc, const char** argv)
