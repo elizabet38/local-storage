@@ -151,12 +151,12 @@ class HashTable {
 public:
     std::unordered_map<std::string, uint64_t> table;
     std::string log_file = "log.log";
-    std::string table_file = "table.tab";
+    std::string table_name = "table.tab";
     std::ofstream log_out;
 
 
     void restore() {
-        std::ifstream table_in(table_file);
+        std::ifstream table_in(table_name);
     	std::ifstream log_in(log_file);
 
    	std::string key;
@@ -183,9 +183,9 @@ public:
         table[key] = value;
     }
 
-    void write_to_table() {
+    void table_update() {
         std::ofstream table_out;
-       	table_out.open(table_file, std::ofstream::out | std::ofstream::trunc);
+       	table_out.open(table_name, std::ofstream::out | std::ofstream::trunc);
 
         for (auto& it: table) {
             table_out << it.first << ' ' << it.second << '\n';
@@ -195,7 +195,7 @@ public:
 
     HashTable() {
      	restore();
-	    write_to_table();
+	    table_update();
 	    log_out.open(log_file, std::ofstream::trunc);
 
     }
