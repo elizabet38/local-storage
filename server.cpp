@@ -154,6 +154,7 @@ public:
     std::string table_name = "table.tab";
     std::ofstream log_out;
     std::num = 0
+    std::MAX_LOG_SIZE = 65536
 
 
     void restore() {
@@ -198,8 +199,9 @@ public:
      	restore();
 	    table_update();
 	    num++
-	    if (num == 65536) {
+	    if (num == MAX_LOG_SIZE) {
 	        log_out.fopen(log_file, std::ofstream::trunc);
+	        num = 0
 	    }
 	    else {
 	        log_out.open(log_file, std::ofstream::trunc);
