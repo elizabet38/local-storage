@@ -200,7 +200,7 @@ public:
 	    table_update();
 	    num++
 	    if (num == MAX_LOG_SIZE) {
-	        log_out.fopen(log_file, std::ofstream::trunc);
+	        log_out.fopen(log_file, "w");
 	        num = 0
 	    }
 	    else {
