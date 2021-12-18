@@ -6,6 +6,7 @@
 #include <array>
 #include <cstdio>
 #include <cstring>
+#include <cerrno>
 #include <sstream>
 #include <string>
 #include <unordered_map>
@@ -97,6 +98,11 @@ auto make_socket_nonblocking(int socketfd)
 
 ////////////////////////////////////////////////////////////////////////////////
 
+SocketStatePtr invalid_state()
+{
+    return std::make_shared<SocketState>();
+}
+
 SocketStatePtr accept_connection(
     int socketfd,
     struct epoll_event& event,
@@ -109,8 +115,8 @@ SocketStatePtr accept_connection(
         if (errno == EAGAIN || errno == EWOULDBLOCK) {
             return nullptr;
         } else {
-            LOG_ERROR("accept failed");
-            return nullptr;
+            LOG_PERROR("accept failed with error");
+            return invalid_state();
         }
     }
 
@@ -128,15 +134,15 @@ SocketStatePtr accept_connection(
     }
 
     if (!make_socket_nonblocking(infd)) {
-        LOG_ERROR("make_socket_nonblocking failed");
-        return nullptr;
+        LOG_PERROR("make_socket_nonblocking failed");
+        return invalid_state();
     }
 
     event.data.fd = infd;
     event.events = EPOLLIN | EPOLLOUT | EPOLLET;
     if (epoll_ctl(epollfd, EPOLL_CTL_ADD, infd, &event) == -1) {
-        LOG_ERROR("epoll_ctl failed");
-        return nullptr;
+        LOG_PERROR("epoll_ctl failed");
+        return invalid_state();
     }
 
     auto state = std::make_shared<SocketState>();
@@ -146,69 +152,6 @@ SocketStatePtr accept_connection(
 
 }   // namespace
 
-////////////////////////////////////////////////////////////////////////////////
-class HashTable {
-public:
-    std::unordered_map<std::string, uint64_t> table;
-    std::string log_file = "log.log";
-    std::string table_name = "table.tab";
-    std::ofstream log_out;
-    std::num = 0
-    std::MAX_LOG_SIZE = 65536
-
-
-    void restore() {
-        std::ifstream table_in(table_name);
-    	std::ifstream log_in(log_file);
-
-   	std::string key;
-    	std::uint64_t value;
-    	while (table_in >> key >> value) {
-      		table[key] = value;
-    	}
-
-    	while (log_in >> key >> value) {
-      		table[key] = value;
-    	}
-
-    	table_in.close();
-    	log_in.close();
-    }
-
-    std::pair<bool, uint64_t> find(const std::string &key) {
-        return std::make_pair(table.find(key) != table.end(), table[key]);
-    }
-
-    void insert(const std::string &key, const uint64_t &value) {
-        log_out << key << " " << value << "\n";
-	    log_out.flush();
-        table[key] = value;
-    }
-
-    void table_update() {
-        std::ofstream table_out;
-       	table_out.open(table_name, std::ofstream::out | std::ofstream::trunc);
-
-        for (auto& it: table) {
-            table_out << it.first << ' ' << it.second << '\n';
-        }
-        table_out.close();
-    }
-
-    HashTable() {
-     	restore();
-	    table_update();
-	    num++
-	    if (num == MAX_LOG_SIZE) {
-	        log_out.fopen(log_file, "w");
-	        num = 0
-	    }
-	    else {
-	        log_out.open(log_file, std::ofstream::trunc);
-        }
-    }
-
-};
 ////////////////////////////////////////////////////////////////////////////////
 
 int main(int argc, const char** argv)
@@ -255,7 +198,7 @@ int main(int argc, const char** argv)
      */
 
     // TODO on-disk storage
-    HashTable storage;
+    std::unordered_map<std::string, uint64_t> storage;
 
     auto handle_get = [&] (const std::string& request) {
         NProto::TGetRequest get_request;
@@ -270,7 +213,7 @@ int main(int argc, const char** argv)
         NProto::TGetResponse get_response;
         get_response.set_request_id(get_request.request_id());
         auto it = storage.find(get_request.key());
-        if (it.first) {
+        if (it != storage.end()) {
             get_response.set_offset(it->second);
         }
 
@@ -291,7 +234,7 @@ int main(int argc, const char** argv)
 
         LOG_DEBUG_S("put_request: " << put_request.ShortDebugString());
 
-        storage.insert(put_request.key(), put_request.offset());
+        storage[put_request.key()] = put_request.offset();
 
         NProto::TPutResponse put_response;
         put_response.set_request_id(put_request.request_id());
@@ -364,14 +307,16 @@ int main(int argc, const char** argv)
                 continue;
             }
 
+            bool closed = false;
             if (events[i].events & EPOLLIN) {
                 auto state = states.at(fd);
                 if (!process_input(*state, handler)) {
                     finalize(fd);
+                    closed = true;
                 }
             }
 
-            if (events[i].events & EPOLLOUT) {
+            if (events[i].events & EPOLLOUT && !closed) {
                 auto state = states.at(fd);
                 if (!process_output(*state)) {
                     finalize(fd);
