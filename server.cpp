@@ -153,6 +153,7 @@ public:
     std::string log_file = "log.log";
     std::string table_name = "table.tab";
     std::ofstream log_out;
+    std::num = 0
 
 
     void restore() {
@@ -196,8 +197,13 @@ public:
     HashTable() {
      	restore();
 	    table_update();
-	    log_out.open(log_file, std::ofstream::trunc);
-
+	    num++
+	    if (num == 8192) {
+	        log_out.fopen(log_file, std::ofstream::trunc);
+	    }
+	    else {
+	        log_out.open(log_file, std::ofstream::trunc);
+        }
     }
 
 };
