@@ -147,6 +147,61 @@ SocketStatePtr accept_connection(
 }   // namespace
 
 ////////////////////////////////////////////////////////////////////////////////
+class HashTable {
+public:
+    std::unordered_map<std::string, uint64_t> table;
+    std::string log_file = "log.log";
+    std::string table_file = "table.tab";
+    std::ofstream log_out;
+
+
+    void restore() {
+        std::ifstream table_in(table_file);
+    	std::ifstream log_in(log_file);
+
+   	std::string key;
+    	std::uint64_t value;
+    	while (table_in >> key >> value) {
+      		table[key] = value;
+    	}
+
+    	while (log_in >> key >> value) {
+      		table[key] = value;
+    	}
+
+    	table_in.close();
+    	log_in.close();
+    }
+
+    std::pair<bool, uint64_t> find(const std::string &key) {
+        return std::make_pair(table.find(key) != table.end(), table[key]);
+    }
+
+    void insert(const std::string &key, const uint64_t &value) {
+        log_out << key << " " << value << "\n";
+	    log_out.flush();
+        table[key] = value;
+    }
+
+    void write_to_table() {
+        std::ofstream table_out;
+       	table_out.open(table_file, std::ofstream::out | std::ofstream::trunc);
+
+        for (auto& it: table) {
+            table_out << it.first << ' ' << it.second << '\n';
+        }
+        table_out.close();
+    }
+
+    HashTable() {
+     	restore();
+	    write_to_table();
+	    log_out.open(log_file, std::ofstream::trunc);
+
+    }
+
+};
+////////////////////////////////////////////////////////////////////////////////
 
 int main(int argc, const char** argv)
 {
@@ -192,7 +247,7 @@ int main(int argc, const char** argv)
      */
 
     // TODO on-disk storage
-    std::unordered_map<std::string, uint64_t> storage;
+    HashTable storage;
 
     auto handle_get = [&] (const std::string& request) {
         NProto::TGetRequest get_request;
@@ -207,7 +262,7 @@ int main(int argc, const char** argv)
         NProto::TGetResponse get_response;
         get_response.set_request_id(get_request.request_id());
         auto it = storage.find(get_request.key());
-        if (it != storage.end()) {
+        if (it.first) {
             get_response.set_offset(it->second);
         }
 
@@ -228,7 +283,7 @@ int main(int argc, const char** argv)
 
         LOG_DEBUG_S("put_request: " << put_request.ShortDebugString());
 
-        storage[put_request.key()] = put_request.offset();
+        storage.insert(put_request.key(), put_request.offset());
 
         NProto::TPutResponse put_response;
         put_response.set_request_id(put_request.request_id());
