@@ -198,7 +198,7 @@ public:
      	restore();
 	    table_update();
 	    num++
-	    if (num == 8192) {
+	    if (num == 65536) {
 	        log_out.fopen(log_file, std::ofstream::trunc);
 	    }
 	    else {
